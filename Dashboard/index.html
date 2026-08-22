@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organ Transportation – Real-Time Monitoring System</title>
+    <meta name="description"
+        content="Real-time IoT dashboard for monitoring organ transport conditions including temperature, humidity, motion, and GPS tracking.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ======================== RED FLASH OVERLAY ======================== -->
+    <div id="red-flash-overlay" class="red-flash-overlay"></div>
+
+    <!-- ======================== LOGIN SCREEN ======================== -->
+    <div id="login-screen" class="screen active">
+        <div class="login-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">
+                    <i class="fas fa-shield-heart"></i>
+                </div>
+                <h1>Organ Transport Monitor</h1>
+                <p class="login-subtitle">Secure Real-Time Monitoring System</p>
+            </div>
+            <form id="login-form" autocomplete="off">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="login-email" placeholder="Email Address" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                </div>
+                <div class="role-selector">
+                    <label class="role-option" data-role="doctor">
+                        <input type="radio" name="role" value="doctor" checked>
+                        <div class="role-card">
+                            <i class="fas fa-user-doctor"></i>
+                            <span>Doctor</span>
+                            <small>Full Access</small>
+                        </div>
+                    </label>
+                    <label class="role-option" data-role="patient">
+                        <input type="radio" name="role" value="patient">
+                        <div class="role-card">
+                            <i class="fas fa-people-group"></i>
+                            <span>Patient Family</span>
+                            <small>Limited Access</small>
+                        </div>
+                    </label>
+                </div>
+                <button type="submit" class="login-btn" id="login-btn">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right-to-bracket"></i>
+                </button>
+            </form>
+            <div class="login-toggle" id="login-toggle">
+                Don't have an account? <a id="toggle-signup">Sign Up</a>
+            </div>
+            <div id="login-success" class="login-success"></div>
+            <div id="login-error" class="login-error"></div>
+        </div>
+    </div>
+
+    <!-- ======================== LOADING SCREEN ======================== -->
+    <div id="loading-screen" class="screen">
+        <div class="loader-container">
+            <div class="loader-icon-wrap">
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring delay"></div>
+                <i class="fas fa-heartbeat loader-heart"></i>
+            </div>
+            <h2 class="loader-title">Connecting to Organ Monitoring System…</h2>
+            <div class="loader-steps">
+                <div class="loader-step" id="step-1">
+                    <div class="step-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                    <span>Connecting to device…</span>
+                </div>
+                <div class="loader-step" id="step-2">
+                    <div class="step-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                    <span>Fetching sensor data…</span>
+                </div>
+                <div class="loader-step" id="step-3">
+                    <div class="step-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                    <span>Initializing dashboard…</span>
+                </div>
+            </div>
+            <div class="loader-bar-track">
+                <div class="loader-bar-fill" id="loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== DASHBOARD ======================== -->
+    <div id="dashboard-screen" class="screen">
+
+        <!-- HEADER -->
+        <header class="dashboard-header" id="dashboard-header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <i class="fas fa-shield-heart"></i>
+                </div>
+                <div class="header-title-group">
+                    <h1>Organ Transportation Monitor</h1>
+                    <span class="header-badge">LIVE</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="header-btn doctor-only" id="btn-settings" title="Settings">
+                    <i class="fas fa-gear"></i>
+                </button>
+                <button class="header-btn doctor-only" id="btn-csv" title="Download CSV">
+                    <i class="fas fa-file-csv"></i>
+                </button>
+                <button class="header-btn theme-btn" id="btn-theme" title="Toggle Light/Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div class="user-badge" id="user-badge">
+                    <i class="fas fa-user-doctor"></i>
+                    <span id="user-role-label">Doctor</span>
+                    <button class="logout-btn" id="btn-logout" title="Logout">
+                        <i class="fas fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ALERT BANNER -->
+        <div id="alert-banner" class="alert-banner hidden">
+            <i class="fas fa-triangle-exclamation"></i>
+            <span id="alert-banner-text">Alert detected!</span>
+            <button id="alert-dismiss" class="alert-dismiss"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <!-- SENSOR CARDS ROW -->
+        <section class="sensor-panel" id="sensor-panel">
+            <div class="sensor-card" id="card-temp" data-sensor="temperature">
+                <div class="sensor-icon"><i class="fas fa-temperature-half"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Temperature</span>
+                    <span class="sensor-value" id="val-temp">--</span>
+                    <span class="sensor-unit">°C</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-hum" data-sensor="humidity">
+                <div class="sensor-icon"><i class="fas fa-droplet"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Humidity</span>
+                    <span class="sensor-value" id="val-hum">--</span>
+                    <span class="sensor-unit">%</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-ax" data-sensor="accelX">
+                <div class="sensor-icon"><i class="fas fa-arrows-left-right"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Accel X</span>
+                    <span class="sensor-value" id="val-ax">--</span>
+                    <span class="sensor-unit">g</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-ay" data-sensor="accelY">
+                <div class="sensor-icon"><i class="fas fa-arrows-up-down"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Accel Y</span>
+                    <span class="sensor-value" id="val-ay">--</span>
+                    <span class="sensor-unit">g</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-az" data-sensor="accelZ">
+                <div class="sensor-icon"><i class="fas fa-arrows-rotate"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Accel Z</span>
+                    <span class="sensor-value" id="val-az">--</span>
+                    <span class="sensor-unit">g</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-tilt" data-sensor="tiltAngle">
+                <div class="sensor-icon"><i class="fas fa-compass"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Tilt Angle</span>
+                    <span class="sensor-value" id="val-tilt">--</span>
+                    <span class="sensor-unit">°</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-lat" data-sensor="latitude">
+                <div class="sensor-icon"><i class="fas fa-location-crosshairs"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Latitude</span>
+                    <span class="sensor-value" id="val-lat">--</span>
+                    <span class="sensor-unit">°</span>
+                </div>
+            </div>
+            <div class="sensor-card" id="card-lng" data-sensor="longitude">
+                <div class="sensor-icon"><i class="fas fa-location-dot"></i></div>
+                <div class="sensor-info">
+                    <span class="sensor-label">Longitude</span>
+                    <span class="sensor-value" id="val-lng">--</span>
+                    <span class="sensor-unit">°</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN CONTENT GRID -->
+        <main class="main-grid">
+            <!-- LEFT COLUMN: Chart + Map -->
+            <div class="left-column">
+
+                <!-- CHART -->
+                <div class="panel chart-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-chart-line"></i> Sensor History</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="sensor-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- MAP -->
+                <div class="panel map-panel" id="map-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-map-location-dot"></i> Live GPS Tracking</h2>
+                        <div class="map-controls">
+                            <button id="btn-map-settings" class="map-btn" title="Map Settings"><i
+                                    class="fas fa-gear"></i></button>
+                            <button id="btn-fullscreen" class="map-btn" title="Fullscreen"><i
+                                    class="fas fa-expand"></i></button>
+                            <button id="btn-minimize" class="map-btn hidden" title="Minimize"><i
+                                    class="fas fa-compress"></i></button>
+                        </div>
+                    </div>
+                    <div id="map" class="map-container"></div>
+                    <!-- Transport Info Bar -->
+                    <div id="map-info-bar" class="map-info-bar hidden">
+                        <div class="info-item"><i class="fas fa-road"></i> <span id="map-distance">-- km</span></div>
+                        <div class="info-divider"></div>
+                        <div class="info-item"><i class="fas fa-clock"></i> <span id="map-eta">ETA: --</span></div>
+                        <div class="info-divider"></div>
+                        <div class="info-item info-progress-item">
+                            <span id="map-progress-text">Progress: 0%</span>
+                            <div class="info-progress-bar">
+                                <div class="info-progress-fill" id="map-progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Map Settings Panel -->
+                    <div id="map-settings-panel" class="map-settings-panel hidden">
+                        <div class="msp-header">
+                            <h3><i class="fas fa-gear"></i> Map Settings</h3>
+                            <button id="btn-close-map-settings" class="settings-close-btn"><i
+                                    class="fas fa-xmark"></i></button>
+                        </div>
+                        <div class="msp-body">
+                            <div class="msp-group">
+                                <label class="msp-label">Indicator Type</label>
+                                <div class="msp-options">
+                                    <button class="msp-option active" data-indicator="bluedot" id="opt-bluedot">
+                                        <span class="ind-preview ind-bluedot"></span><span>Blue Dot</span>
+                                    </button>
+                                    <button class="msp-option" data-indicator="ambulance" id="opt-ambulance">
+                                        <span class="ind-preview ind-ambulance">🚑</span><span>Ambulance</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="msp-group doctor-only">
+                                <label class="msp-label">Transport Route</label>
+                                <button id="btn-modify-route" class="btn-secondary-sm"><i
+                                        class="fas fa-map-marker-alt"></i> Modify Locations</button>
+                            </div>
+                            <div class="msp-group">
+                                <label class="msp-label">OpenRouteService API Key</label>
+                                <input type="text" id="ors-api-key" class="msp-input"
+                                    placeholder="Paste your ORS API key…">
+                                <button id="btn-save-ors" class="btn-secondary-sm" style="margin-top:8px;"><i
+                                        class="fas fa-floppy-disk"></i> Save Key</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Center Follow Toggle -->
+                    <button id="btn-follow" class="map-follow-btn active" title="Auto-center on location"><i
+                            class="fas fa-crosshairs"></i></button>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Controls + Mode + Gauges + Status -->
+            <div class="right-column">
+
+                <!-- SYSTEM CONTROL -->
+                <div class="panel control-panel doctor-only" id="control-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-power-off"></i> System Control</h2>
+                    </div>
+                    <div class="control-body">
+                        <span class="control-label" id="control-status-label">System OFF</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="system-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- TEMPERATURE MODE SELECTION (DOCTOR ONLY) -->
+                <div class="panel mode-panel doctor-only" id="mode-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-sliders"></i> Temperature Mode</h2>
+                    </div>
+                    <div class="mode-body">
+                        <div class="mode-buttons">
+                            <button class="mode-btn active" data-mode="cold" id="mode-cold">
+                                <i class="fas fa-snowflake"></i>
+                                <span class="mode-btn-label">Cold Storage</span>
+                                <span class="mode-btn-range">2°C – 8°C</span>
+                            </button>
+                            <button class="mode-btn" data-mode="perfusion" id="mode-perfusion">
+                                <i class="fas fa-temperature-half"></i>
+                                <span class="mode-btn-label">Perfusion</span>
+                                <span class="mode-btn-range">20°C – 37°C</span>
+                            </button>
+                            <button class="mode-btn" data-mode="demo" id="mode-demo">
+                                <i class="fas fa-flask"></i>
+                                <span class="mode-btn-label">Demo</span>
+                                <span class="mode-btn-range">25°C – 30°C</span>
+                            </button>
+                        </div>
+                        <div class="mode-current" id="mode-current-label">
+                            <i class="fas fa-info-circle"></i>
+                            Current Mode: <strong>Cold Storage (2–8°C)</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- THRESHOLD GAUGES -->
+                <div class="panel gauge-panel" id="gauge-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-gauge-high"></i> Thresholds</h2>
+                    </div>
+                    <div class="threshold-info" id="threshold-info">
+                        <span class="threshold-badge" id="threshold-badge">
+                            <i class="fas fa-thermometer-half"></i>
+                            Safe Range: <strong id="threshold-range-label">2°C – 8°C</strong>
+                        </span>
+                        <span class="threshold-badge threshold-badge-tilt">
+                            <i class="fas fa-compass"></i>
+                            Tilt Angle Threshold: <strong>45°</strong>
+                        </span>
+                    </div>
+                    <div class="gauges-grid">
+                        <div class="gauge-item">
+                            <div class="gauge-ring" id="gauge-temp">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"></circle>
+                                    <circle class="gauge-fill" cx="60" cy="60" r="52" id="gauge-temp-fill"></circle>
+                                </svg>
+                                <div class="gauge-center">
+                                    <span class="gauge-val" id="gauge-temp-val">--</span>
+                                    <span class="gauge-lbl">°C</span>
+                                </div>
+                            </div>
+                            <span class="gauge-title">Temperature</span>
+                        </div>
+                        <div class="gauge-item">
+                            <div class="gauge-ring" id="gauge-ldr">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"></circle>
+                                    <circle class="gauge-fill gauge-fill-green" cx="60" cy="60" r="52"
+                                        id="gauge-ldr-fill"></circle>
+                                </svg>
+                                <div class="gauge-center">
+                                    <span class="gauge-val" id="gauge-ldr-val">--</span>
+                                    <span class="gauge-lbl">LDR</span>
+                                </div>
+                            </div>
+                            <span class="gauge-title">Box Status</span>
+                        </div>
+                        <div class="gauge-item">
+                            <div class="gauge-ring" id="gauge-tilt">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"></circle>
+                                    <circle class="gauge-fill gauge-fill-purple" cx="60" cy="60" r="52"
+                                        id="gauge-tilt-fill"></circle>
+                                </svg>
+                                <div class="gauge-center">
+                                    <span class="gauge-val" id="gauge-tilt-val">--</span>
+                                    <span class="gauge-lbl">°</span>
+                                </div>
+                            </div>
+                            <span class="gauge-title">Tilt Angle</span>
+                        </div>
+                        <div class="gauge-item">
+                            <div class="gauge-ring" id="gauge-accel">
+                                <svg viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"></circle>
+                                    <circle class="gauge-fill gauge-fill-orange" cx="60" cy="60" r="52"
+                                        id="gauge-accel-fill"></circle>
+                                </svg>
+                                <div class="gauge-center">
+                                    <span class="gauge-val" id="gauge-accel-val">--</span>
+                                    <span class="gauge-lbl">g</span>
+                                </div>
+                            </div>
+                            <span class="gauge-title">Acceleration</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SENSOR STATUS (DOCTOR ONLY) -->
+                <div class="panel status-panel doctor-only" id="status-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-microchip"></i> Sensor Status</h2>
+                    </div>
+                    <div class="status-list">
+                        <div class="status-item" id="status-dht">
+                            <i class="fas fa-temperature-half"></i>
+                            <span class="status-name">DHT22 (Temp/Hum)</span>
+                            <span class="status-dot working"></span>
+                            <span class="status-text">Working</span>
+                        </div>
+                        <div class="status-item" id="status-mpu">
+                            <i class="fas fa-wave-square"></i>
+                            <span class="status-name">MPU6050</span>
+                            <span class="status-dot working"></span>
+                            <span class="status-text">Working</span>
+                        </div>
+                        <div class="status-item" id="status-ldr-sensor">
+                            <i class="fas fa-sun"></i>
+                            <span class="status-name">LDR Sensor</span>
+                            <span class="status-dot working"></span>
+                            <span class="status-text">Working</span>
+                        </div>
+                        <div class="status-item" id="status-gps">
+                            <i class="fas fa-satellite-dish"></i>
+                            <span class="status-name">GPS Module</span>
+                            <span class="status-dot working"></span>
+                            <span class="status-text">Working</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="dashboard-footer">
+            <span><i class="fas fa-clock"></i> Last Updated: <span id="last-updated">--</span></span>
+        </footer>
+    </div>
+
+    <!-- ======================== SETTINGS MODAL ======================== -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2><i class="fas fa-gear"></i> Blynk Configuration</h2>
+                <button id="modal-close" class="modal-close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <i class="fas fa-key"></i>
+                    <input type="text" id="cfg-token" placeholder="Blynk Auth Token" />
+                </div>
+                <h3 class="modal-section-title">Pin Mappings</h3>
+                <div class="pin-grid">
+                    <div class="pin-item">
+                        <label>Temperature</label>
+                        <input type="text" id="pin-temp" placeholder="V0" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Humidity</label>
+                        <input type="text" id="pin-hum" placeholder="V1" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Accel X</label>
+                        <input type="text" id="pin-ax" placeholder="V2" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Accel Y</label>
+                        <input type="text" id="pin-ay" placeholder="V3" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Accel Z</label>
+                        <input type="text" id="pin-az" placeholder="V4" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Latitude</label>
+                        <input type="text" id="pin-lat" placeholder="V5" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Longitude</label>
+                        <input type="text" id="pin-lng" placeholder="V6" />
+                    </div>
+                    <div class="pin-item">
+                        <label>LDR / Box</label>
+                        <input type="text" id="pin-ldr" placeholder="V7" />
+                    </div>
+                    <div class="pin-item">
+                        <label>System Ctrl</label>
+                        <input type="text" id="pin-ctrl" placeholder="V8" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Temp Mode</label>
+                        <input type="text" id="pin-mode" placeholder="V9" />
+                    </div>
+                    <div class="pin-item">
+                        <label>Tilt Angle</label>
+                        <input type="text" id="pin-tilt" placeholder="V10" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-config" class="btn-primary"><i class="fas fa-floppy-disk"></i> Save
+                    Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== ALERT POPUP ======================== -->
+    <div id="alert-popup" class="alert-popup hidden">
+        <div class="alert-popup-card">
+            <div class="alert-popup-icon"><i class="fas fa-circle-exclamation"></i></div>
+            <h3 id="alert-popup-title">Alert!</h3>
+            <p id="alert-popup-msg">Sensor reading exceeded threshold.</p>
+            <button id="alert-popup-close" class="btn-primary">Dismiss</button>
+        </div>
+    </div>
+
+    <!-- ======================== ROUTE SETUP MODAL ======================== -->
+    <div id="route-modal" class="route-modal-overlay hidden">
+        <div class="route-modal-card">
+            <div class="route-modal-header">
+                <div class="route-modal-icon"><i class="fas fa-route"></i></div>
+                <h2>Configure Transport Route</h2>
+                <p>Set the donor and recipient hospital locations before activating the system.</p>
+            </div>
+            <div class="route-modal-body">
+                <div class="route-input-row">
+                    <div class="route-input-group">
+                        <label><span class="route-dot route-dot-start"></span> Start – Donor Hospital</label>
+                        <div class="route-search-wrap">
+                            <input type="text" id="route-start-input" placeholder="Search location or click map…">
+                            <button id="route-start-search" class="route-search-btn" title="Search"><i
+                                    class="fas fa-search"></i></button>
+                        </div>
+                        <div id="route-start-results" class="route-search-results hidden"></div>
+                    </div>
+                    <div class="route-input-group">
+                        <label><span class="route-dot route-dot-end"></span> Destination – Recipient Hospital</label>
+                        <div class="route-search-wrap">
+                            <input type="text" id="route-end-input" placeholder="Search location or click map…">
+                            <button id="route-end-search" class="route-search-btn" title="Search"><i
+                                    class="fas fa-search"></i></button>
+                        </div>
+                        <div id="route-end-results" class="route-search-results hidden"></div>
+                    </div>
+                </div>
+                <div class="route-map-hint">
+                    <i class="fas fa-hand-pointer"></i>
+                    <span>Click on map: <strong>1st click</strong> = Start, <strong>2nd click</strong> =
+                        Destination</span>
+                </div>
+                <div id="route-modal-map" class="route-modal-map"></div>
+            </div>
+            <div class="route-modal-footer">
+                <div class="route-status" id="route-status"><i class="fas fa-info-circle"></i> Set both locations to
+                    continue</div>
+                <button id="btn-set-route" class="btn-primary" disabled><i class="fas fa-route"></i> Set Route &amp;
+                    Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== ROUTE CHANGE CONFIRMATION ======================== -->
+    <div id="route-confirm-dialog" class="route-confirm-overlay hidden">
+        <div class="route-confirm-card">
+            <div class="route-confirm-icon"><i class="fas fa-triangle-exclamation"></i></div>
+            <h3>Modify Transport Route?</h3>
+            <p>Changing route will reset current tracking progress. Do you want to continue?</p>
+            <div class="route-confirm-actions">
+                <button id="btn-confirm-cancel" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-yes" class="btn-primary"><i class="fas fa-check"></i> Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+    <script src="transport.js"></script>
+    <script>localStorage.clear()</script>
+</body>
+
+</html>
