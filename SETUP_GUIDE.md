@@ -22,16 +22,16 @@ You'll need:
 
 ## Step 1 — Extract the zip
 
-Unzip `organ-transport-monitor.zip` wherever you keep projects.
+Unzip `OrganTransit.zip` wherever you keep projects.
 
-- **Mac**: double-click it, or `unzip organ-transport-monitor.zip` in a terminal
+- **Mac**: double-click it, or `unzip OrganTransit.zip` in a terminal
 - **Windows**: right-click → "Extract All"
-- **Linux**: `unzip organ-transport-monitor.zip`
+- **Linux**: `unzip OrganTransit.zip`
 
 You should end up with:
 
 ```
-organ-transport-monitor/
+OrganTransit/
 ├── .gitignore
 ├── SETUP_GUIDE.md      <- this file
 ├── supabase/
@@ -42,7 +42,7 @@ organ-transport-monitor/
     └── (React files)
 ```
 
-Open the extracted `organ-transport-monitor` folder in your code editor (VS Code or similar) — every command below is run from inside it.
+Open the extracted `OrganTransit` folder in your code editor (VS Code or similar) — every command below is run from inside it.
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "name": "organ-transport-frontend",
+  "name": "organtransit-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "chart.js": "^4.4.1",
+    "leaflet": "^1.9.4",
     "react": "^18.3.0",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^6.26.0"
   },
